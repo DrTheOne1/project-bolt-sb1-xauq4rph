@@ -1,0 +1,59 @@
+{
+  "languages": {
+    "en": "Englisch",
+    "es": "Spanisch",
+    "fr": "Französisch",
+    "de": "Deutsch",
+    "sv": "Schwedisch",
+    "ar": "Arabisch"
+  },
+  "common": {
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "add": "Hinzufügen",
+    "search": "Suchen",
+    "loading": "Laden...",
+    "error": "Fehler",
+    "success": "Erfolg"
+  },
+  "navigation": {
+    "dashboard": "Dashboard",
+    "messaging": "Nachrichten",
+    "contacts": "Kontakte",
+    "templates": "Vorlagen",
+    "analytics": "Analysen",
+    "settings": "Einstellungen"
+  },
+  "auth": {
+    "signIn": "Anmelden",
+    "signOut": "Abmelden",
+    "register": "Registrieren",
+    "email": "E-Mail",
+    "password": "Passwort",
+    "confirmPassword": "Passwort bestätigen"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "stats": {
+      "totalMessages": "Gesamtnachrichten",
+      "deliveryRate": "Zustellungsrate",
+      "activeContacts": "Aktive Kontakte",
+      "scheduledMessages": "Geplante Nachrichten"
+    }
+  },
+  "messaging": {
+    "send": "Nachricht senden",
+    "recipient": "Empfänger",
+    "message": "Nachricht",
+    "schedule": "Planen",
+    "template": "Vorlage",
+    "status": {
+      "sent": "Gesendet",
+      "delivered": "Zugestellt",
+      "failed": "Fehlgeschlagen",
+      "pending": "Ausstehend"
+    }
+  }
+} 

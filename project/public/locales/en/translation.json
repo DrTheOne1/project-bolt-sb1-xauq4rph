@@ -1,0 +1,59 @@
+{
+  "languages": {
+    "en": "English",
+    "es": "Spanish",
+    "fr": "French",
+    "de": "German",
+    "sv": "Swedish",
+    "ar": "Arabic"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "search": "Search",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success"
+  },
+  "navigation": {
+    "dashboard": "Dashboard",
+    "messaging": "Messaging",
+    "contacts": "Contacts",
+    "templates": "Templates",
+    "analytics": "Analytics",
+    "settings": "Settings"
+  },
+  "auth": {
+    "signIn": "Sign In",
+    "signOut": "Sign Out",
+    "register": "Register",
+    "email": "Email",
+    "password": "Password",
+    "confirmPassword": "Confirm Password"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "stats": {
+      "totalMessages": "Total Messages",
+      "deliveryRate": "Delivery Rate",
+      "activeContacts": "Active Contacts",
+      "scheduledMessages": "Scheduled Messages"
+    }
+  },
+  "messaging": {
+    "send": "Send Message",
+    "recipient": "Recipient",
+    "message": "Message",
+    "schedule": "Schedule",
+    "template": "Template",
+    "status": {
+      "sent": "Sent",
+      "delivered": "Delivered",
+      "failed": "Failed",
+      "pending": "Pending"
+    }
+  }
+}

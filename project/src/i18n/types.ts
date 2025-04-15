@@ -1,0 +1,128 @@
+type DeepKeys<T> = T extends object
+  ? {
+      [K in keyof T]: K extends string
+        ? T[K] extends object
+          ? `${K}.${DeepKeys<T[K]>}`
+          : K
+        : never;
+    }[keyof T]
+  : never;
+
+export type TranslationKey = DeepKeys<typeof translations>;
+
+export const translations = {
+  common: {
+    loading: 'Loading...',
+    error: 'An error occurred',
+    save: 'Save',
+    cancel: 'Cancel',
+    delete: 'Delete',
+    edit: 'Edit',
+    add: 'Add',
+    search: 'Search...',
+    noResults: 'No results found',
+    confirm: 'Are you sure?',
+    yes: 'Yes',
+    no: 'No',
+    success: 'Success',
+    warning: 'Warning',
+    info: 'Information',
+    actions: {
+      retry: 'Retry',
+      close: 'Close',
+      submit: 'Submit'
+    }
+  },
+  messages: {
+    title: 'Messages',
+    description: 'View and manage your SMS messages',
+    search: 'Search messages...',
+    newMessage: 'New Message',
+    recentMessages: 'Recent Messages',
+    recipient: 'Recipient',
+    content: 'Content',
+    date: 'Date',
+    noMessages: 'No messages found',
+    error: 'An error occurred while loading messages. Please try again later.',
+    success: 'Message sent successfully',
+    statusTypes: {
+      success: 'Success',
+      failed: 'Failed',
+      pending: 'Pending',
+      delivered: 'Delivered'
+    }
+  },
+  analytics: {
+    title: 'Analytics & Reports',
+    description: 'Comprehensive analytics and reporting for your SMS messaging',
+    totalMessages: 'Total Messages',
+    successRate: 'Success Rate',
+    failedMessages: 'Failed Messages',
+    deliveryRate: 'Delivery Rate',
+    noData: 'No analytics data available',
+    period: {
+      today: 'Today',
+      week: 'This Week',
+      month: 'This Month',
+      year: 'This Year'
+    }
+  },
+  billing: {
+    title: 'Billing & Plans',
+    description: 'Manage your subscription plans and billing information',
+    currentUsage: 'Current Usage',
+    monitorUsage: 'Monitor your current plan and credit usage',
+    currentPlan: 'Current Plan',
+    creditsLeft: 'Credits Left',
+    nextBilling: 'Next Billing',
+    availablePlans: 'Available Plans',
+    billingHistory: 'Billing History',
+    noActivePlan: 'No active plan',
+    insufficientCredits: 'Insufficient credits. Please purchase more credits to continue.',
+    plans: {
+      free: 'Free',
+      basic: 'Basic',
+      pro: 'Professional',
+      enterprise: 'Enterprise'
+    }
+  },
+  navigation: {
+    dashboard: 'Dashboard',
+    sendSMS: 'Send SMS',
+    bulkSend: 'Bulk Send',
+    contacts: 'Contacts',
+    groups: 'Groups',
+    templates: 'Templates',
+    scheduled: 'Scheduled',
+    history: 'History',
+    analytics: 'Analytics',
+    usage: 'Usage',
+    billing: 'Billing',
+    settings: 'Settings',
+    logout: 'Logout'
+  },
+  auth: {
+    login: 'Login',
+    register: 'Register',
+    email: 'Email',
+    password: 'Password',
+    confirmPassword: 'Confirm Password',
+    forgotPassword: 'Forgot Password?',
+    rememberMe: 'Remember Me',
+    noAccount: 'Don\'t have an account?',
+    haveAccount: 'Already have an account?',
+    signUp: 'Sign Up',
+    signIn: 'Sign In',
+    error: {
+      invalidCredentials: 'Invalid email or password',
+      emailExists: 'Email already exists',
+      weakPassword: 'Password is too weak',
+      networkError: 'Network error occurred',
+      validation: {
+        email: 'Please enter a valid email address',
+        password: 'Password must be at least 8 characters long',
+        confirmPassword: 'Passwords do not match'
+      }
+    }
+  }
+} as const; 

@@ -1,0 +1,44 @@
+/* Form field styles following Material Design and WCAG guidelines */
+.form-input,
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="tel"],
+input[type="datetime-local"],
+textarea,
+select {
+  @apply px-4 py-2.5;
+  line-height: 1.5;
+}
+
+/* Ensure consistent spacing for form groups */
+.form-group {
+  @apply mb-4;
+}
+
+/* Label styles */
+label {
+  @apply mb-1.5 inline-block;
+}
+
+/* Textarea specific padding */
+textarea {
+  @apply px-4 py-3;
+  min-height: 6rem;
+}
+
+/* Select specific padding to account for arrow */
+select {
+  @apply pl-4 pr-8;
+}
+
+/* Error state */
+.error {
+  @apply border-red-500 focus:border-red-500 focus:ring-red-500;
+}
+
+/* Error message */
+.error-message {
+  @apply mt-1 text-sm text-red-600;
+}

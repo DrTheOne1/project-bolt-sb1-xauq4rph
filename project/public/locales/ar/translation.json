@@ -1,0 +1,59 @@
+{
+  "languages": {
+    "en": "الإنجليزية",
+    "es": "الإسبانية",
+    "fr": "الفرنسية",
+    "de": "الألمانية",
+    "sv": "السويدية",
+    "ar": "العربية"
+  },
+  "common": {
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "delete": "حذف",
+    "edit": "تعديل",
+    "add": "إضافة",
+    "search": "بحث",
+    "loading": "جاري التحميل...",
+    "error": "خطأ",
+    "success": "تم بنجاح"
+  },
+  "navigation": {
+    "dashboard": "لوحة التحكم",
+    "messaging": "الرسائل",
+    "contacts": "جهات الاتصال",
+    "templates": "القوالب",
+    "analytics": "التحليلات",
+    "settings": "الإعدادات"
+  },
+  "auth": {
+    "signIn": "تسجيل الدخول",
+    "signOut": "تسجيل الخروج",
+    "register": "تسجيل",
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "confirmPassword": "تأكيد كلمة المرور"
+  },
+  "dashboard": {
+    "title": "لوحة التحكم",
+    "stats": {
+      "totalMessages": "إجمالي الرسائل",
+      "deliveryRate": "معدل التوصيل",
+      "activeContacts": "جهات الاتصال النشطة",
+      "scheduledMessages": "الرسائل المجدولة"
+    }
+  },
+  "messaging": {
+    "send": "إرسال رسالة",
+    "recipient": "المستلم",
+    "message": "الرسالة",
+    "schedule": "جدولة",
+    "template": "قالب",
+    "status": {
+      "sent": "تم الإرسال",
+      "delivered": "تم التوصيل",
+      "failed": "فشل",
+      "pending": "قيد الانتظار"
+    }
+  }
+}

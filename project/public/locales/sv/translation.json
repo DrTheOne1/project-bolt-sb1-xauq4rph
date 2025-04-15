@@ -1,0 +1,59 @@
+{
+  "languages": {
+    "en": "Engelska",
+    "es": "Spanska",
+    "fr": "Franska",
+    "de": "Tyska",
+    "sv": "Svenska",
+    "ar": "Arabiska"
+  },
+  "common": {
+    "save": "Spara",
+    "cancel": "Avbryt",
+    "delete": "Radera",
+    "edit": "Redigera",
+    "add": "Lägg till",
+    "search": "Sök",
+    "loading": "Laddar...",
+    "error": "Fel",
+    "success": "Klart"
+  },
+  "navigation": {
+    "dashboard": "Översikt",
+    "messaging": "Meddelanden",
+    "contacts": "Kontakter",
+    "templates": "Mallar",
+    "analytics": "Analys",
+    "settings": "Inställningar"
+  },
+  "auth": {
+    "signIn": "Logga in",
+    "signOut": "Logga ut",
+    "register": "Registrera",
+    "email": "E-post",
+    "password": "Lösenord",
+    "confirmPassword": "Bekräfta lösenord"
+  },
+  "dashboard": {
+    "title": "Översikt",
+    "stats": {
+      "totalMessages": "Totalt antal meddelanden",
+      "deliveryRate": "Leveransfrekvens",
+      "activeContacts": "Aktiva kontakter",
+      "scheduledMessages": "Schemalagda meddelanden"
+    }
+  },
+  "messaging": {
+    "send": "Skicka meddelande",
+    "recipient": "Mottagare",
+    "message": "Meddelande",
+    "schedule": "Schemalägg",
+    "template": "Mall",
+    "status": {
+      "sent": "Skickat",
+      "delivered": "Levererat",
+      "failed": "Misslyckat",
+      "pending": "Väntar"
+    }
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "languages": {
+    "en": "Anglais",
+    "es": "Espagnol",
+    "fr": "Français",
+    "de": "Allemand",
+    "sv": "Suédois",
+    "ar": "Arabe"
+  },
+  "common": {
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "add": "Ajouter",
+    "search": "Rechercher",
+    "loading": "Chargement...",
+    "error": "Erreur",
+    "success": "Succès"
+  },
+  "navigation": {
+    "dashboard": "Tableau de bord",
+    "messaging": "Messagerie",
+    "contacts": "Contacts",
+    "templates": "Modèles",
+    "analytics": "Analytique",
+    "settings": "Paramètres"
+  },
+  "auth": {
+    "signIn": "Se connecter",
+    "signOut": "Se déconnecter",
+    "register": "S'inscrire",
+    "email": "E-mail",
+    "password": "Mot de passe",
+    "confirmPassword": "Confirmer le mot de passe"
+  },
+  "dashboard": {
+    "title": "Tableau de bord",
+    "stats": {
+      "totalMessages": "Total des messages",
+      "deliveryRate": "Taux de livraison",
+      "activeContacts": "Contacts actifs",
+      "scheduledMessages": "Messages programmés"
+    }
+  },
+  "messaging": {
+    "send": "Envoyer un message",
+    "recipient": "Destinataire",
+    "message": "Message",
+    "schedule": "Planifier",
+    "template": "Modèle",
+    "status": {
+      "sent": "Envoyé",
+      "delivered": "Livré",
+      "failed": "Échoué",
+      "pending": "En attente"
+    }
+  }
+} 

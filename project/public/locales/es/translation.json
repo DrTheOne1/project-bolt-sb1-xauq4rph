@@ -1,0 +1,59 @@
+{
+  "languages": {
+    "en": "Inglés",
+    "es": "Español",
+    "fr": "Francés",
+    "de": "Alemán",
+    "sv": "Sueco",
+    "ar": "Árabe"
+  },
+  "common": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "add": "Añadir",
+    "search": "Buscar",
+    "loading": "Cargando...",
+    "error": "Error",
+    "success": "Éxito"
+  },
+  "navigation": {
+    "dashboard": "Panel de control",
+    "messaging": "Mensajes",
+    "contacts": "Contactos",
+    "templates": "Plantillas",
+    "analytics": "Análisis",
+    "settings": "Configuración"
+  },
+  "auth": {
+    "signIn": "Iniciar sesión",
+    "signOut": "Cerrar sesión",
+    "register": "Registrarse",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "confirmPassword": "Confirmar contraseña"
+  },
+  "dashboard": {
+    "title": "Panel de control",
+    "stats": {
+      "totalMessages": "Total de mensajes",
+      "deliveryRate": "Tasa de entrega",
+      "activeContacts": "Contactos activos",
+      "scheduledMessages": "Mensajes programados"
+    }
+  },
+  "messaging": {
+    "send": "Enviar mensaje",
+    "recipient": "Destinatario",
+    "message": "Mensaje",
+    "schedule": "Programar",
+    "template": "Plantilla",
+    "status": {
+      "sent": "Enviado",
+      "delivered": "Entregado",
+      "failed": "Fallido",
+      "pending": "Pendiente"
+    }
+  }
+} 
