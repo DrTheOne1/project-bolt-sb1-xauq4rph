@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Trash2, Edit, CreditCard, Ban as Bank } from 'lucide-react';
+import { Plus, Trash2, Edit, CreditCard, Ban as Bank, Copy } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import toast from 'react-hot-toast';
 
 const paymentMethodSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -102,6 +103,37 @@ export default function PaymentMethods() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['payment-methods'] });
+      toast.success('Payment method deleted successfully');
+    },
+    onError: (error) => {
+      toast.error('Failed to delete payment method: ' + error.message);
+    }
+  });
+
+  const duplicateMethodMutation = useMutation({
+    mutationFn: async (method: any) => {
+      const { id, created_at, updated_at, ...methodData } = method;
+      
+      const { data, error } = await supabase
+        .from('payment_methods')
+        .insert([{
+          ...methodData,
+          name: `${method.name} (Copy)`,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payment-methods'] });
+      toast.success('Payment method duplicated successfully');
+    },
+    onError: (error) => {
+      toast.error('Failed to duplicate payment method: ' + error.message);
     }
   });
 
@@ -275,6 +307,15 @@ export default function PaymentMethods() {
                         </span>
                       </td>
                       <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
+                        <button
+                          onClick={() => {
+                            duplicateMethodMutation.mutate(method);
+                          }}
+                          className="text-indigo-600 hover:text-indigo-900 mr-4"
+                          title="Duplicate Payment Method"
+                        >
+                          <Copy className="h-4 w-4" />
+                        </button>
                         <button
                           onClick={() => {
                             setSelectedMethod(method);

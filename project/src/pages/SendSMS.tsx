@@ -2,11 +2,20 @@ import { useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Send, Wallet } from 'lucide-react';
+import { Send, Wallet, CreditCard } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import PhoneInput from '../components/PhoneInput';
 import toast from 'react-hot-toast';
 import { useQuery } from '@tanstack/react-query';
+
+interface User {
+  credits: number;
+}
+
+interface GatewayCredits {
+  balance: number;
+  currency: string;
+}
 
 const sendSMSSchema = z.object({
   gateway_id: z.string().min(1, 'Gateway is required'),
@@ -20,6 +29,23 @@ type SendSMSForm = z.infer<typeof sendSMSSchema>;
 
 export default function SendSMS() {
   const [loading, setLoading] = useState(false);
+
+  const { data: user } = useQuery<User>({
+    queryKey: ['user'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('No user found');
+
+      const { data, error } = await supabase
+        .from('users')
+        .select('credits')
+        .eq('id', user.id)
+        .single();
+
+      if (error) throw error;
+      return data;
+    }
+  });
 
   const { data: gateways } = useQuery({
     queryKey: ['active-gateways'],
@@ -50,8 +76,8 @@ export default function SendSMS() {
 
   // Get gateway credits with proper error handling and caching
   const { data: gatewayCredits, error: creditsError } = useQuery({
-    queryKey: ['gateway-credits', selectedGatewayId],
-    queryFn: async () => {
+    queryKey: ['gateway-credits', selectedGatewayId] as const,
+    queryFn: async (): Promise<GatewayCredits | null> => {
       if (!selectedGatewayId) return null;
 
       const gateway = gateways?.find(g => g.id === selectedGatewayId);
@@ -75,13 +101,13 @@ export default function SendSMS() {
         throw new Error(error.error || 'Failed to fetch gateway credits');
       }
 
-      return response.json();
+      const data = await response.json();
+      return data as GatewayCredits;
     },
-    enabled: !!selectedGatewayId && !!gateways?.find(g => g.id === selectedGatewayId)?.provider === 'twilio',
+    enabled: !!selectedGatewayId && gateways?.find(g => g.id === selectedGatewayId)?.provider === 'twilio',
     refetchInterval: 60000, // Refresh every minute
     retry: 2,
     staleTime: 30000, // Consider data stale after 30 seconds
-    cacheTime: 60000, // Keep data in cache for 1 minute
   });
 
   const onSubmit = async (data: SendSMSForm) => {
@@ -169,8 +195,17 @@ export default function SendSMS() {
             Send messages through configured gateways
           </p>
         </div>
-        {selectedGatewayId && (
-          <div className="mt-4 sm:mt-0">
+        <div className="mt-4 sm:mt-0 space-y-2">
+          <div className="flex items-center bg-white rounded-lg shadow px-4 py-2">
+            <CreditCard className="h-5 w-5 text-indigo-600 mr-2" />
+            <div>
+              <p className="text-sm font-medium text-gray-900">Your Credits</p>
+              <p className="text-lg font-semibold text-indigo-600">
+                {user?.credits?.toLocaleString() || '0'}
+              </p>
+            </div>
+          </div>
+          {selectedGatewayId && (
             <div className="flex items-center bg-white rounded-lg shadow px-4 py-2">
               <Wallet className="h-5 w-5 text-green-600 mr-2" />
               <div>
@@ -186,18 +221,18 @@ export default function SendSMS() {
                 )}
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="mt-6 space-y-6 bg-white p-6 rounded-lg shadow">
-        {selectedGatewayId && (!gatewayCredits || gatewayCredits.balance <= 0) && (
+        {(!user?.credits || user.credits <= 0) && (
           <div className="rounded-md bg-yellow-50 p-4">
             <div className="flex">
               <div className="ml-3">
-                <h3 className="text-sm font-medium text-yellow-800">Low Balance Warning</h3>
+                <h3 className="text-sm font-medium text-yellow-800">Insufficient Credits</h3>
                 <div className="mt-2 text-sm text-yellow-700">
-                  The selected gateway has insufficient balance. Please contact your administrator.
+                  You have no credits remaining. Please purchase more credits to continue sending messages.
                 </div>
               </div>
             </div>

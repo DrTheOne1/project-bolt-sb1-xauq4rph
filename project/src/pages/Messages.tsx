@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { format } from 'date-fns';
@@ -26,7 +26,7 @@ export default function Messages() {
     end: new Date().toISOString().split('T')[0]
   });
 
-  const { data: messages, isLoading, error } = useQuery({
+  const { data: messages, isLoading, error } = useQuery<Message[]>({
     queryKey: ['user-messages', searchQuery, statusFilter, dateRange],
     queryFn: async () => {
       try {

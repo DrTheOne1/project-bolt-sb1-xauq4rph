@@ -1,48 +1,35 @@
 import { useState } from 'react';
 import { CreditCard, Package, Shield } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useQuery } from '@tanstack/react-query';
 
-const plans = [
-  {
-    name: 'Basic',
-    credits: 1000,
-    price: 29,
-    features: [
-      '1,000 SMS credits',
-      'Basic analytics',
-      'Email support',
-      '30-day history',
-    ],
-  },
-  {
-    name: 'Professional',
-    credits: 5000,
-    price: 99,
-    features: [
-      '5,000 SMS credits',
-      'Advanced analytics',
-      'Priority support',
-      '90-day history',
-      'Custom templates',
-    ],
-  },
-  {
-    name: 'Enterprise',
-    credits: 20000,
-    price: 299,
-    features: [
-      '20,000 SMS credits',
-      'Full analytics suite',
-      '24/7 support',
-      'Unlimited history',
-      'Custom templates',
-      'API access',
-    ],
-  },
-];
+interface SubscriptionPlan {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  credits: number;
+  billing_cycle: string;
+  features: string[];
+  is_active: boolean;
+}
 
 export default function Billing() {
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+
+  const { data: plans, isLoading: plansLoading } = useQuery<SubscriptionPlan[]>({
+    queryKey: ['subscription-plans'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('subscription_plans')
+        .select('*')
+        .eq('is_active', true)
+        .order('price', { ascending: true });
+      
+      if (error) throw error;
+      return data;
+    }
+  });
 
   const handlePurchase = async (planName: string) => {
     try {
@@ -103,62 +90,66 @@ export default function Billing() {
         <h2 className="text-base font-semibold leading-6 text-gray-900">
           Available Plans
         </h2>
-        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          {plans.map((plan) => (
-            <div
-              key={plan.name}
-              className={`relative flex flex-col rounded-lg border p-6 shadow-sm ${
-                selectedPlan === plan.name
-                  ? 'border-indigo-600 ring-2 ring-indigo-600'
-                  : 'border-gray-300'
-              }`}
-            >
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold leading-8 text-gray-900">
-                  {plan.name}
-                </h3>
-                <p className="mt-4 flex items-baseline text-gray-900">
-                  <span className="text-4xl font-bold tracking-tight">${plan.price}</span>
-                  <span className="ml-1 text-sm font-semibold">/month</span>
-                </p>
-                <p className="mt-6 text-sm leading-6 text-gray-500">
-                  {plan.credits.toLocaleString()} SMS credits included
-                </p>
-
-                <ul role="list" className="mt-8 space-y-3 text-sm leading-6 text-gray-600">
-                  {plan.features.map((feature) => (
-                    <li key={feature} className="flex gap-x-3">
-                      <svg
-                        className="h-6 w-5 flex-none text-indigo-600"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                        aria-hidden="true"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <button
-                onClick={() => handlePurchase(plan.name)}
-                className={`mt-8 block w-full rounded-md px-3 py-2 text-center text-sm font-semibold leading-6 ${
-                  selectedPlan === plan.name
-                    ? 'bg-indigo-600 text-white hover:bg-indigo-500'
-                    : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'
+        {plansLoading ? (
+          <div className="mt-4 text-center text-gray-500">Loading plans...</div>
+        ) : (
+          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {plans?.map((plan) => (
+              <div
+                key={plan.id}
+                className={`relative flex flex-col rounded-lg border p-6 shadow-sm ${
+                  selectedPlan === plan.id
+                    ? 'border-indigo-600 ring-2 ring-indigo-600'
+                    : 'border-gray-300'
                 }`}
               >
-                {selectedPlan === plan.name ? 'Current Plan' : 'Subscribe'}
-              </button>
-            </div>
-          ))}
-        </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold leading-8 text-gray-900">
+                    {plan.name}
+                  </h3>
+                  <p className="mt-4 flex items-baseline text-gray-900">
+                    <span className="text-4xl font-bold tracking-tight">${plan.price}</span>
+                    <span className="ml-1 text-sm font-semibold">/{plan.billing_cycle}</span>
+                  </p>
+                  <p className="mt-6 text-sm leading-6 text-gray-500">
+                    {plan.credits.toLocaleString()} SMS credits included
+                  </p>
+
+                  <ul role="list" className="mt-8 space-y-3 text-sm leading-6 text-gray-600">
+                    {plan.features.map((feature) => (
+                      <li key={feature} className="flex gap-x-3">
+                        <svg
+                          className="h-6 w-5 flex-none text-indigo-600"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                          aria-hidden="true"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <button
+                  onClick={() => handlePurchase(plan.id)}
+                  className={`mt-8 block w-full rounded-md px-3 py-2 text-center text-sm font-semibold leading-6 ${
+                    selectedPlan === plan.id
+                      ? 'bg-indigo-600 text-white hover:bg-indigo-500'
+                      : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'
+                  }`}
+                >
+                  {selectedPlan === plan.id ? 'Current Plan' : 'Subscribe'}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="mt-8 bg-white shadow sm:rounded-lg">
