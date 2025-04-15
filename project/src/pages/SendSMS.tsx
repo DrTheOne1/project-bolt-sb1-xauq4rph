@@ -1,15 +1,19 @@
 import { useState } from 'react';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Send, Wallet, CreditCard } from 'lucide-react';
+import { Send, CreditCard, Wallet } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import PhoneInput from '../components/PhoneInput';
 import toast from 'react-hot-toast';
-import { useQuery } from '@tanstack/react-query';
 
 interface User {
+  id: string;
+  email: string;
   credits: number;
+  gateway_id: string;
+  sender_names: string[];
 }
 
 interface GatewayCredits {
@@ -18,7 +22,6 @@ interface GatewayCredits {
 }
 
 const sendSMSSchema = z.object({
-  gateway_id: z.string().min(1, 'Gateway is required'),
   sender_id: z.string().min(1, 'Sender is required'),
   recipient: z.string().min(1, 'Recipient is required'),
   message: z.string().min(1, 'Message is required').max(160, 'Message must be less than 160 characters'),
@@ -33,25 +36,27 @@ export default function SendSMS() {
   const { data: user } = useQuery<User>({
     queryKey: ['user'],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('No user found');
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) throw new Error('No user found');
 
       const { data, error } = await supabase
         .from('users')
-        .select('credits')
-        .eq('id', user.id)
+        .select('credits, gateway_id, sender_names')
+        .eq('id', authUser.id)
         .single();
 
       if (error) throw error;
-      return data;
+      return { ...data, id: authUser.id, email: authUser.email };
     }
   });
 
-  const { data: gateways } = useQuery({
-    queryKey: ['active-gateways'],
+  const { data: gateway } = useQuery({
+    queryKey: ['gateway', user?.gateway_id],
     queryFn: async () => {
+      if (!user?.gateway_id) return null;
+
       const { data, error } = await supabase
-        .from('gateways')
+        .from('admin/gateways')
         .select(`
           id,
           name,
@@ -59,35 +64,32 @@ export default function SendSMS() {
           status,
           credentials
         `)
-        .eq('status', 'active')
-        .order('name');
+        .eq('id', user.gateway_id)
+        .single();
       
       if (error) throw error;
       return data;
-    }
+    },
+    enabled: !!user?.gateway_id
   });
 
   const { control, handleSubmit, watch, formState: { errors }, reset } = useForm<SendSMSForm>({
     resolver: zodResolver(sendSMSSchema),
   });
 
-  const selectedGatewayId = watch('gateway_id');
-  const selectedGatewayData = gateways?.find(g => g.id === selectedGatewayId);
+  const selectedSenderId = watch('sender_id');
 
   // Get gateway credits with proper error handling and caching
   const { data: gatewayCredits, error: creditsError } = useQuery({
-    queryKey: ['gateway-credits', selectedGatewayId] as const,
+    queryKey: ['gateway-credits', user?.gateway_id] as const,
     queryFn: async (): Promise<GatewayCredits | null> => {
-      if (!selectedGatewayId) return null;
-
-      const gateway = gateways?.find(g => g.id === selectedGatewayId);
-      if (!gateway || gateway.provider !== 'twilio') return null;
+      if (!user?.gateway_id || !gateway || gateway.provider !== 'twilio') return null;
 
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) throw new Error('No access token found');
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-twilio-credits?gateway_id=${selectedGatewayId}`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-twilio-credits?gateway_id=${user.gateway_id}`,
         {
           headers: {
             'Authorization': `Bearer ${session.access_token}`,
@@ -104,7 +106,7 @@ export default function SendSMS() {
       const data = await response.json();
       return data as GatewayCredits;
     },
-    enabled: !!selectedGatewayId && gateways?.find(g => g.id === selectedGatewayId)?.provider === 'twilio',
+    enabled: !!user?.gateway_id && gateway?.provider === 'twilio',
     refetchInterval: 60000, // Refresh every minute
     retry: 2,
     staleTime: 30000, // Consider data stale after 30 seconds
@@ -112,6 +114,17 @@ export default function SendSMS() {
 
   const onSubmit = async (data: SendSMSForm) => {
     try {
+      if (!user?.gateway_id) {
+        toast.error('No gateway configured for your account. Please contact your administrator.', {
+          duration: 5000,
+          style: {
+            background: '#EF4444',
+            color: '#fff',
+          },
+        });
+        return;
+      }
+
       if (!gatewayCredits || gatewayCredits.balance <= 0) {
         toast.error('Insufficient gateway balance. Please contact your administrator.', {
           duration: 5000,
@@ -127,7 +140,7 @@ export default function SendSMS() {
 
       // First create the message record
       const { data: messageData, error: dbError } = await supabase.from('messages').insert({
-        gateway_id: data.gateway_id,
+        gateway_id: user.gateway_id,
         recipient: data.recipient,
         message: data.message,
         scheduled_for: data.scheduledFor || null,
@@ -150,7 +163,7 @@ export default function SendSMS() {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              gateway_id: data.gateway_id,
+              gateway_id: user.gateway_id,
               sender_id: data.sender_id,
               recipient: data.recipient,
               message: data.message,
@@ -192,7 +205,7 @@ export default function SendSMS() {
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Send SMS</h1>
           <p className="mt-2 text-sm text-gray-700">
-            Send messages through configured gateways
+            Send messages through your configured gateway
           </p>
         </div>
         <div className="mt-4 sm:mt-0 space-y-2">
@@ -205,7 +218,7 @@ export default function SendSMS() {
               </p>
             </div>
           </div>
-          {selectedGatewayId && (
+          {user?.gateway_id && (
             <div className="flex items-center bg-white rounded-lg shadow px-4 py-2">
               <Wallet className="h-5 w-5 text-green-600 mr-2" />
               <div>
@@ -239,33 +252,20 @@ export default function SendSMS() {
           </div>
         )}
 
-        <div>
-          <label htmlFor="gateway" className="block text-sm font-medium text-gray-700">
-            Gateway
-          </label>
-          <Controller
-            name="gateway_id"
-            control={control}
-            render={({ field }) => (
-              <select
-                {...field}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-              >
-                <option value="">Select a gateway</option>
-                {gateways?.map((gateway) => (
-                  <option key={gateway.id} value={gateway.id}>
-                    {gateway.name} ({gateway.provider})
-                  </option>
-                ))}
-              </select>
-            )}
-          />
-          {errors.gateway_id && (
-            <p className="mt-1 text-sm text-red-600">{errors.gateway_id.message}</p>
-          )}
-        </div>
+        {!user?.gateway_id && (
+          <div className="rounded-md bg-yellow-50 p-4">
+            <div className="flex">
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-yellow-800">No Gateway Configured</h3>
+                <div className="mt-2 text-sm text-yellow-700">
+                  Your account has no gateway configured. Please contact your administrator to set up a gateway.
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
-        {selectedGatewayData && (
+        {user?.gateway_id && (
           <div>
             <label htmlFor="sender" className="block text-sm font-medium text-gray-700">
               Sender ID
@@ -279,9 +279,11 @@ export default function SendSMS() {
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                 >
                   <option value="">Select a sender ID</option>
-                  <option value={selectedGatewayData.credentials.sender_number}>
-                    {selectedGatewayData.credentials.sender_number}
-                  </option>
+                  {user.sender_names?.map((sender) => (
+                    <option key={sender} value={sender}>
+                      {sender}
+                    </option>
+                  ))}
                 </select>
               )}
             />
@@ -347,7 +349,7 @@ export default function SendSMS() {
 
         <button
           type="submit"
-          disabled={loading || !selectedGatewayId || !gatewayCredits || gatewayCredits.balance <= 0}
+          disabled={loading || !user?.gateway_id || !selectedSenderId || !gatewayCredits || gatewayCredits.balance <= 0}
           className="w-full flex justify-center items-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
         >
           <Send className="h-4 w-4 mr-2" />

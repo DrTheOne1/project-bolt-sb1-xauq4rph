@@ -1,22 +1,50 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { Plus, Trash2, Edit, Shield, User as UserIcon, CreditCard, Mail, Lock } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+
+interface User {
+  id: string;
+  email: string;
+  role: string;
+  credits: number;
+  gateway_id?: string;
+  sender_names?: string[];
+}
+
+const userSchema = z.object({
+  email: z.string().email('Invalid email address'),
+  password: z.string().min(8, 'Password must be at least 8 characters').optional().or(z.literal('')),
+  role: z.enum(['user', 'admin']),
+  gateway_id: z.string().optional(),
+  sender_names: z.array(z.string()).optional()
+});
+
+type UserForm = z.infer<typeof userSchema>;
 
 export default function UserManagement() {
   const [isEditingUser, setIsEditingUser] = useState(false);
   const [isAddingUser, setIsAddingUser] = useState(false);
   const [isManagingCredits, setIsManagingCredits] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [newUser, setNewUser] = useState({ email: '', password: '', role: 'user' });
-  const [editForm, setEditForm] = useState({
-    email: '',
-    password: '',
-    role: ''
-  });
   const [creditAmount, setCreditAmount] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
   const queryClient = useQueryClient();
+
+  const { control: editControl, handleSubmit: handleEditSubmit, reset: resetEditForm } = useForm<UserForm>({
+    resolver: zodResolver(userSchema),
+  });
+
+  const { control: addControl } = useForm<UserForm>({
+    resolver: zodResolver(userSchema),
+    defaultValues: {
+      role: 'user'
+    }
+  });
 
   const { data: users } = useQuery({
     queryKey: ['users'],
@@ -29,6 +57,41 @@ export default function UserManagement() {
       if (error) throw error;
       return data;
     }
+  });
+
+  const { data: gateways, error: gatewaysError } = useQuery({
+    queryKey: ['admin-gateways'],
+    queryFn: async () => {
+      try {
+        const { data, error } = await supabase
+          .from('gateways')
+          .select(`
+            id,
+            name,
+            provider,
+            status,
+            credentials
+          `)
+          .eq('status', 'active')
+          .order('name');
+        
+        if (error) {
+          console.error('Error fetching gateways:', error);
+          throw error;
+        }
+        
+        if (!data) {
+          throw new Error('No gateways found');
+        }
+        
+        return data;
+      } catch (err: any) {
+        console.error('Error in gateway query:', err);
+        throw err;
+      }
+    },
+    retry: 2,
+    staleTime: 30000
   });
 
   const addUserMutation = useMutation({
@@ -115,7 +178,9 @@ export default function UserManagement() {
         .from('users')
         .update({
           email: data.email,
-          role: data.role
+          role: data.role,
+          gateway_id: data.gateway_id || null,
+          sender_names: data.sender_names || []
         })
         .eq('id', id);
 
@@ -125,7 +190,7 @@ export default function UserManagement() {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       setIsEditingUser(false);
       setSelectedUser(null);
-      setEditForm({ email: '', password: '', role: '' });
+      resetEditForm();
       setError(null);
     },
     onError: (error: Error) => {
@@ -161,14 +226,21 @@ export default function UserManagement() {
     }
   });
 
-  const handleEditClick = (user: any) => {
-    setSelectedUser(user);
-    setEditForm({
-      email: user.email,
-      password: '',
-      role: user.role
-    });
-    setIsEditingUser(true);
+  const handleEditClick = (user: User) => {
+    try {
+      setSelectedUser(user);
+      resetEditForm({
+        email: user.email,
+        password: '',
+        role: user.role as 'user' | 'admin',
+        gateway_id: user.gateway_id || '',
+        sender_names: user.sender_names || []
+      });
+      setIsEditingUser(true);
+      setError(null);
+    } catch (err: any) {
+      setError(err.message || 'Failed to load user data');
+    }
   };
 
   return (
@@ -292,7 +364,7 @@ export default function UserManagement() {
             <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
               <div className="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
                 <div>
-                  <div className="mt-3 text-center sm:mt-5">
+                  <div className="mt-3 text-left sm:mt-5">
                     <h3 className="text-base font-semibold leading-6 text-gray-900">
                       Edit User
                     </h3>
@@ -309,44 +381,124 @@ export default function UserManagement() {
                           </div>
                         </div>
                       )}
+                      {gatewaysError && (
+                        <div className="rounded-md bg-yellow-50 p-4 mb-4">
+                          <div className="flex">
+                            <div className="ml-3">
+                              <h3 className="text-sm font-medium text-yellow-800">Warning</h3>
+                              <div className="mt-2 text-sm text-yellow-700">
+                                Unable to load gateways. Please try again later or contact support.
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                       <div className="space-y-4">
                         <div>
-                          <label htmlFor="edit-email" className="block text-sm font-medium text-gray-700">
+                          <label htmlFor="edit-gateway" className="block text-sm font-medium text-gray-700 text-left">
+                            Default Gateway
+                          </label>
+                          <Controller
+                            name="gateway_id"
+                            control={editControl}
+                            render={({ field }) => (
+                              <select
+                                {...field}
+                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                                disabled={!!gatewaysError}
+                              >
+                                <option value="">Select a gateway</option>
+                                {gateways?.map((gateway) => (
+                                  <option key={gateway.id} value={gateway.id}>
+                                    {gateway.name} ({gateway.provider})
+                                  </option>
+                                ))}
+                              </select>
+                            )}
+                          />
+                          {gatewaysError && (
+                            <p className="mt-1 text-sm text-yellow-600 text-left">
+                              Gateway selection is disabled due to loading error. The current gateway will be preserved.
+                            </p>
+                          )}
+                        </div>
+
+                        <div>
+                          <label htmlFor="edit-sender-names" className="block text-sm font-medium text-gray-700 text-left">
+                            Sender Names
+                          </label>
+                          <Controller
+                            name="sender_names"
+                            control={editControl}
+                            render={({ field }) => (
+                              <div className="mt-1">
+                                <input
+                                  type="text"
+                                  {...field}
+                                  value={field.value?.join(', ') || ''}
+                                  onChange={(e) => {
+                                    const names = e.target.value.split(',').map(name => name.trim()).filter(Boolean);
+                                    field.onChange(names);
+                                  }}
+                                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                                  placeholder="Enter sender names separated by commas"
+                                />
+                                <p className="mt-1 text-sm text-gray-500">
+                                  Enter sender names separated by commas. These will be available for this user to use when sending messages.
+                                </p>
+                              </div>
+                            )}
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="edit-email" className="block text-sm font-medium text-gray-700 text-left">
                             Email
                           </label>
-                          <input
-                            type="email"
-                            id="edit-email"
-                            value={editForm.email}
-                            onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                          <Controller
+                            name="email"
+                            control={editControl}
+                            render={({ field }) => (
+                              <input
+                                type="email"
+                                {...field}
+                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                              />
+                            )}
                           />
                         </div>
                         <div>
-                          <label htmlFor="edit-password" className="block text-sm font-medium text-gray-700">
+                          <label htmlFor="edit-password" className="block text-sm font-medium text-gray-700 text-left">
                             New Password (leave blank to keep current)
                           </label>
-                          <input
-                            type="password"
-                            id="edit-password"
-                            value={editForm.password}
-                            onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                          <Controller
+                            name="password"
+                            control={editControl}
+                            render={({ field }) => (
+                              <input
+                                type="password"
+                                {...field}
+                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                              />
+                            )}
                           />
                         </div>
                         <div>
-                          <label htmlFor="edit-role" className="block text-sm font-medium text-gray-700">
+                          <label htmlFor="edit-role" className="block text-sm font-medium text-gray-700 text-left">
                             Role
                           </label>
-                          <select
-                            id="edit-role"
-                            value={editForm.role}
-                            onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                          >
-                            <option value="user">User</option>
-                            <option value="admin">Admin</option>
-                          </select>
+                          <Controller
+                            name="role"
+                            control={editControl}
+                            render={({ field }) => (
+                              <select
+                                {...field}
+                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                              >
+                                <option value="user">User</option>
+                                <option value="admin">Admin</option>
+                              </select>
+                            )}
+                          />
                         </div>
                       </div>
                     </div>
@@ -355,14 +507,7 @@ export default function UserManagement() {
                 <div className="mt-5 sm:mt-6 space-y-2">
                   <button
                     type="button"
-                    onClick={() => updateUserMutation.mutate({
-                      id: selectedUser.id,
-                      data: {
-                        email: editForm.email !== selectedUser.email ? editForm.email : undefined,
-                        password: editForm.password || undefined,
-                        role: editForm.role
-                      }
-                    })}
+                    onClick={handleEditSubmit((data) => updateUserMutation.mutate({ id: selectedUser.id, data }))}
                     className="inline-flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500"
                   >
                     Save Changes
@@ -372,7 +517,7 @@ export default function UserManagement() {
                     onClick={() => {
                       setIsEditingUser(false);
                       setSelectedUser(null);
-                      setEditForm({ email: '', password: '', role: '' });
+                      resetEditForm();
                       setError(null);
                     }}
                     className="inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"

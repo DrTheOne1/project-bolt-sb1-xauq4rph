@@ -3,6 +3,11 @@ import { CreditCard, Package, Shield } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useQuery } from '@tanstack/react-query';
 
+interface User {
+  id: string;
+  credits: number;
+}
+
 interface SubscriptionPlan {
   id: string;
   name: string;
@@ -16,6 +21,23 @@ interface SubscriptionPlan {
 
 export default function Billing() {
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+
+  const { data: user } = useQuery<User>({
+    queryKey: ['user'],
+    queryFn: async () => {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) throw new Error('No user found');
+
+      const { data, error } = await supabase
+        .from('users')
+        .select('credits')
+        .eq('id', authUser.id)
+        .single();
+
+      if (error) throw error;
+      return { id: authUser.id, credits: data.credits };
+    }
+  });
 
   const { data: plans, isLoading: plansLoading } = useQuery<SubscriptionPlan[]>({
     queryKey: ['subscription-plans'],
@@ -72,7 +94,9 @@ export default function Billing() {
                   <CreditCard className="h-6 w-6 text-gray-400" />
                   <span className="ml-2 text-sm font-medium text-gray-500">Credits Left</span>
                 </div>
-                <p className="mt-2 text-2xl font-semibold text-gray-900">3,456</p>
+                <p className="mt-2 text-2xl font-semibold text-gray-900">
+                  {user?.credits?.toLocaleString() || '0'}
+                </p>
               </div>
               <div className="bg-gray-50 p-4 rounded-lg">
                 <div className="flex items-center">
