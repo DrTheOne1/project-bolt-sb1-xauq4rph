@@ -1,8 +1,10 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabase';
 import { format } from 'date-fns';
 import { logger } from '../../utils/logger';
+import { Search, Filter, Download, MessageSquare } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 interface Message {
   id: string;
@@ -13,134 +15,120 @@ interface Message {
   user_id: string;
   scheduled_for: string | null;
   sent_at: string | null;
+  user_email?: string;
+  gateway_name?: string;
 }
 
 export default function Messages() {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [dateRange, setDateRange] = useState({
+    start: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0],
+    end: new Date().toISOString().split('T')[0]
+  });
+
+  // Check database connection first
   useEffect(() => {
-    const checkAndSetAdminRole = async () => {
+    const checkDatabaseConnection = async () => {
       try {
-        // Check authentication status
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError) {
-          logger.error('Session error:', sessionError);
-          return;
-        }
+        const { data, error } = await supabase
+          .from('messages')
+          .select('count')
+          .limit(1);
 
-        if (!session) {
-          logger.error('No active session found');
-          return;
-        }
-
-        const user = session.user;
-        logger.info('Current user:', { id: user.id, email: user.email });
-
-        // Check if user exists in the users table
-        const { data: userData, error: userError } = await supabase
-          .from('users')
-          .select('role')
-          .eq('id', user.id)
-          .single();
-
-        if (userError) {
-          logger.error('Error checking user role:', userError);
-          return;
-        }
-
-        logger.info('User role check:', { role: userData?.role });
-
-        // If user doesn't have admin role, set it
-        if (!userData || userData.role !== 'admin') {
-          logger.info('Setting admin role for user');
-          const { error: updateError } = await supabase
-            .from('users')
-            .update({ role: 'admin' })
-            .eq('id', user.id);
-
-          if (updateError) {
-            logger.error('Error setting admin role:', updateError);
-          } else {
-            logger.info('Admin role set successfully');
-          }
+        if (error) {
+          console.error('Database connection error:', error);
+          toast.error(`Database connection error: ${error.message}`);
+        } else {
+          console.log('Database connection successful');
         }
       } catch (err) {
-        logger.error('Error in checkAndSetAdminRole:', err as Error);
+        console.error('Error checking database connection:', err);
+        toast.error('Failed to connect to database');
       }
     };
 
-    checkAndSetAdminRole();
+    checkDatabaseConnection();
   }, []);
 
   const { data: messages, isLoading, error } = useQuery({
-    queryKey: ['admin-messages'],
+    queryKey: ['admin-messages', searchQuery, statusFilter, dateRange],
     queryFn: async () => {
       try {
-        // Check authentication status
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError) {
-          logger.error('Session error:', sessionError);
-          throw new Error('Authentication error: ' + sessionError.message);
-        }
-
-        if (!session) {
-          logger.error('No active session found');
-          throw new Error('Not authenticated');
-        }
-
-        const user = session.user;
-        logger.info('Fetching messages for user:', { id: user.id, email: user.email });
-
-        // Check user role
-        const { data: userData, error: userError } = await supabase
-          .from('users')
-          .select('role')
-          .eq('id', user.id)
-          .single();
-
-        if (userError) {
-          logger.error('Error checking user role:', userError);
-          throw new Error('Error checking user role: ' + userError.message);
-        }
-
-        logger.info('User role:', { role: userData?.role });
-
-        if (userData?.role !== 'admin') {
-          logger.error('User is not an admin');
-          throw new Error('Not authorized: User is not an admin');
-        }
-
-        // Fetch messages
-        logger.info('Fetching messages...');
-        const { data, error } = await supabase
+        console.log('Starting query with filters:', { searchQuery, statusFilter, dateRange });
+        
+        // First get all messages
+        let query = supabase
           .from('messages')
-          .select(`
-            id,
-            message,
-            status,
-            recipient,
-            created_at,
-            user_id,
-            scheduled_for,
-            sent_at
-          `)
-          .order('created_at', { ascending: false })
-          .limit(100);
-        
-        if (error) {
-          logger.error('Error fetching messages:', error);
-          console.error('Message fetch error details:', {
-            code: error.code,
-            message: error.message,
-            details: error.details,
-            hint: error.hint
-          });
-          throw new Error('Error fetching messages: ' + error.message);
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        // Apply search filter
+        if (searchQuery) {
+          query = query.or(`recipient.ilike.%${searchQuery}%,message.ilike.%${searchQuery}%`);
         }
-        
-        logger.info('Successfully fetched messages:', { count: data?.length });
-        return data as Message[];
-      } catch (err) {
-        logger.error('Failed to fetch messages:', err as Error);
-        throw err;
+
+        // Apply status filter
+        if (statusFilter !== 'all') {
+          query = query.eq('status', statusFilter);
+        }
+
+        // Apply date range filter
+        query = query
+          .gte('created_at', dateRange.start)
+          .lte('created_at', dateRange.end);
+
+        console.log('Executing query...');
+        const { data: messages, error: messagesError } = await query;
+
+        if (messagesError) {
+          console.error('Database error details:', {
+            message: messagesError.message,
+            code: messagesError.code,
+            details: messagesError.details,
+            hint: messagesError.hint
+          });
+          toast.error(`Database error: ${messagesError.message}`);
+          throw messagesError;
+        }
+
+        // Get unique user IDs and gateway IDs
+        const userIds = [...new Set(messages.map(m => m.user_id))];
+        const gatewayIds = [...new Set(messages.map(m => m.gateway_id))];
+
+        // Fetch user details
+        const { data: users, error: usersError } = await supabase
+          .from('users')
+          .select('id, email')
+          .in('id', userIds);
+
+        if (usersError) {
+          console.error('Error fetching users:', usersError);
+        }
+
+        // Fetch gateway details
+        const { data: gateways, error: gatewaysError } = await supabase
+          .from('gateways')
+          .select('id, name')
+          .in('id', gatewayIds);
+
+        if (gatewaysError) {
+          console.error('Error fetching gateways:', gatewaysError);
+        }
+
+        // Map user and gateway details to messages
+        const messagesWithDetails = messages.map(message => ({
+          ...message,
+          user_email: users?.find(u => u.id === message.user_id)?.email,
+          gateway_name: gateways?.find(g => g.id === message.gateway_id)?.name
+        }));
+
+        console.log('Query successful, data:', messagesWithDetails);
+        return messagesWithDetails;
+      } catch (error) {
+        console.error('Query error details:', error);
+        toast.error('Failed to fetch messages');
+        throw error;
       }
     }
   });
@@ -188,7 +176,7 @@ export default function Messages() {
   }
 
   return (
-    <div className="px-4 sm:px-6 lg:px-8">
+    <div className="space-y-6">
       <div className="sm:flex sm:items-center">
         <div className="sm:flex-auto">
           <h1 className="text-xl font-semibold text-gray-900">Message History</h1>
@@ -205,54 +193,72 @@ export default function Messages() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">
+                      Message
+                    </th>
+                    <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
                       Recipient
                     </th>
                     <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                      Message
+                      User
+                    </th>
+                    <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                      Gateway
                     </th>
                     <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
                       Status
                     </th>
                     <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                      Created At
-                    </th>
-                    <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                      Scheduled For
-                    </th>
-                    <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                      Sent At
+                      Date
                     </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 bg-white">
-                  {messages.map((message) => (
-                    <tr key={message.id}>
-                      <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
-                        {message.recipient}
-                      </td>
-                      <td className="px-3 py-4 text-sm text-gray-500">
-                        {message.message}
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-4 text-sm">
-                        <span className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${
-                          message.status === 'sent' ? 'bg-green-100 text-green-800' :
-                          message.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-red-100 text-red-800'
-                        }`}>
-                          {message.status}
-                        </span>
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                        {format(new Date(message.created_at), 'PPpp')}
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                        {message.scheduled_for ? format(new Date(message.scheduled_for), 'PPpp') : '-'}
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                        {message.sent_at ? format(new Date(message.sent_at), 'PPpp') : '-'}
+                  {isLoading ? (
+                    <tr>
+                      <td colSpan={6} className="py-4 text-center text-sm text-gray-500">
+                        Loading messages...
                       </td>
                     </tr>
-                  ))}
+                  ) : messages?.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="py-4 text-center text-sm text-gray-500">
+                        No messages found
+                      </td>
+                    </tr>
+                  ) : (
+                    messages?.map((message) => (
+                      <tr key={message.id}>
+                        <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
+                          <div className="flex items-center">
+                            <MessageSquare className="h-5 w-5 mr-2 text-gray-400" />
+                            <span className="truncate max-w-xs">{message.message}</span>
+                          </div>
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                          {message.recipient}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                          {message.user_email || 'N/A'}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                          {message.gateway_name || 'N/A'}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                          <span className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${
+                            message.status === 'delivered' ? 'bg-green-100 text-green-800' :
+                            message.status === 'failed' ? 'bg-red-100 text-red-800' :
+                            message.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-blue-100 text-blue-800'
+                          }`}>
+                            {message.status.charAt(0).toUpperCase() + message.status.slice(1)}
+                          </span>
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                          {format(new Date(message.created_at), 'MMM d, yyyy HH:mm')}
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>

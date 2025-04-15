@@ -4,7 +4,6 @@ import {
   Users, 
   FileText, 
   Clock, 
-  History, 
   Settings,
   Upload,
   UserPlus,
@@ -35,7 +34,7 @@ export const userNavigation: NavigationItem[] = [
       { name: 'Send SMS', href: '/send', icon: MessageSquare },
       { name: 'Bulk Send', href: '/bulk-send', icon: Upload },
       { name: 'Scheduled', href: '/scheduled', icon: Clock },
-      { name: 'History', href: '/history', icon: History },
+      { name: 'Messages', href: '/messages', icon: MessageSquare },
     ]
   },
   {
@@ -69,4 +68,5 @@ export const adminNavigation: NavigationItem[] = [
   { name: 'Test SMS', href: '/admin/test-sms', icon: Send },
   { name: 'Payment Methods', href: '/admin/payment-methods', icon: Wallet },
   { name: 'Subscription Plans', href: '/admin/subscription-plans', icon: Package },
+  { name: 'Messages', href: '/admin/messages', icon: MessageSquare },
 ];

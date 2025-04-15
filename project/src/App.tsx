@@ -22,6 +22,7 @@ import Analytics from './pages/Analytics';
 import Usage from './pages/Usage';
 import Billing from './pages/Billing';
 import Settings from './pages/Settings';
+import Messages from './pages/Messages';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import ActivationSuccess from './pages/auth/ActivationSuccess';
@@ -35,6 +36,7 @@ import GatewayLogs from './pages/admin/GatewayLogs';
 import TestSMS from './pages/admin/TestSMS';
 import PaymentMethods from './pages/admin/PaymentMethods';
 import SubscriptionPlans from './pages/admin/SubscriptionPlans';
+import AdminMessages from './pages/admin/Messages';
 
 const queryClient = new QueryClient();
 
@@ -61,6 +63,7 @@ function App() {
                     <Route path="/admin/test-sms" element={<TestSMS />} />
                     <Route path="/admin/payment-methods" element={<PaymentMethods />} />
                     <Route path="/admin/subscription-plans" element={<SubscriptionPlans />} />
+                    <Route path="/admin/messages" element={<AdminMessages />} />
                   </Route>
 
                   {/* User routes */}
@@ -78,6 +81,7 @@ function App() {
                     <Route path="/usage" element={<Usage />} />
                     <Route path="/billing" element={<Billing />} />
                     <Route path="/settings" element={<Settings />} />
+                    <Route path="/messages" element={<Messages />} />
                   </Route>
                 </Route>
               </Route>

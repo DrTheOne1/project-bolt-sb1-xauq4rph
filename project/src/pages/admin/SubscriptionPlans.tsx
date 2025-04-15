@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Trash2, Edit, Package, X, Copy } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { z } from 'zod';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import toast from 'react-hot-toast';
 
@@ -28,7 +28,7 @@ export default function SubscriptionPlans() {
   const [newFeature, setNewFeature] = useState('');
   const queryClient = useQueryClient();
 
-  const { register, handleSubmit, reset, control, watch, setValue, formState: { errors } } = useForm<SubscriptionPlanForm>({
+  const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<SubscriptionPlanForm>({
     resolver: zodResolver(subscriptionPlanSchema),
     defaultValues: {
       currency: 'USD',
